@@ -1,0 +1,17 @@
+SELECT
+p.name
+,gf.id as get_fit_id
+,gf.membership_status
+,dl.plate_number 
+,ci.check_in_date
+FROM get_fit_now_member as gf
+JOIN person as p
+  ON gf.person_id = p.id
+JOIN drivers_license as dl
+  ON p.license_id = dl.id
+JOIN get_fit_now_check_in as ci
+	ON ci.membership_id= gf.id
+WHERE gf.id like '48Z%'
+AND gf.membership_status= 'gold'
+AND dl.plate_number like '%H42W%'
+AND ci.check_in_date =20180109;

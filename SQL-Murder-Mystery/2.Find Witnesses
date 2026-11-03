@@ -1,0 +1,18 @@
+-- First Witness
+SELECT *
+FROM person
+WHERE address_street_name="Northwestern Dr"
+ORDER BY address_number DESC            
+LIMIT 1;
+
+--Second Witness
+SELECT *
+FROM person
+WHERE name like'Annabel%'
+AND address_street_name="Franklin Ave";
+
+--Witness Statements 
+SELECT *
+FROM interview
+WHERE person_id = 16371 
+OR person_id = 14887;

@@ -1,0 +1,34 @@
+--Killers Interview
+SELECT *
+FROM interview
+WHERE person_id = 67318 ;
+
+--Master Mind Description
+SELECT 
+p.name
+,i.annual_income
+,dl.height
+,dl.hair_color
+,dl.car_make
+,dl.car_model
+,fb.event_name
+,count(fb.event_name) as Count_of_Event
+FROM drivers_license as dl
+JOIN person as p
+	ON dl.id=p.license_id
+JOIN facebook_event_checkin as fb
+	ON p.id=fb.person_id
+JOIN income as i
+	ON p.ssn=i.ssn
+WHERE dl.height >65 and dl.height <67
+AND dl.hair_color = 'red'
+AND dl.car_make = 'Tesla'
+AND dl.car_model= 'Model S'
+AND fb.event_name= 'SQL Symphony Concert'
+GROUP BY p.name
+,i.annual_income
+,dl.height
+,dl.hair_color
+,dl.car_make
+,dl.car_model
+,fb.event_name;
