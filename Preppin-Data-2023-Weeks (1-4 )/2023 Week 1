@@ -1,0 +1,23 @@
+--Output 1
+SELECT 
+SPLIT_PART(transaction_code,'-',1) as "Bank"
+,SUM(value) as "Value"
+FROM PD2023_WK01
+Group by 1;
+
+--Output 3
+SELECT 
+SPLIT_PART(transaction_code,'-',1) as "Bank"
+,customer_code as "Customer Code"
+, sum(value) as "Value"
+FROM PD2023_WK01
+GROUP BY all;
+
+--Output 2
+SELECT 
+SPLIT_PART(transaction_code,'-',1) as "Bank"
+,IFF(online_or_in_person=1, 'Online', 'In-person') as "Online or In-person"
+,DAYNAME(TO_TIMESTAMP(TRANSACTION_DATE, 'DD/MM/YYYY HH:MI:SS')) AS "Transaction Date"
+,SUM(value)as "Value"
+FROM PD2023_WK01
+Group by all;

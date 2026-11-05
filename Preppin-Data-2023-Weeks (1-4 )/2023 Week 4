@@ -1,0 +1,67 @@
+--Union all the tables, with CTE create Table_Name column which will be used to create the joining date
+WITH NUM1 AS(
+SELECT*
+,'April' as Table_Name
+FROM PD2023_WK04_APRIL
+UNION all
+SELECT*
+,'August' as Table_Name
+FROM PD2023_WK04_AUGUST
+UNION all
+SELECT*
+,'December' as Table_Name
+FROM PD2023_WK04_DECEMBER
+UNION all
+SELECT*
+,'February' as Table_Name
+FROM PD2023_WK04_FEBRUARY
+UNION all
+SELECT*
+,'January' as Table_Name
+FROM PD2023_WK04_JANUARY
+UNION all
+SELECT*
+,'July' as Table_Name
+FROM PD2023_WK04_JULY
+UNION all
+SELECT*
+,'June' as Table_Name
+FROM PD2023_WK04_JUNE
+UNION all
+SELECT*
+,'March' as Table_Name
+FROM PD2023_WK04_MARCH
+UNION all
+SELECT*
+,'May' as Table_Name
+FROM PD2023_WK04_MAY
+UNION all
+SELECT*
+,'November' as Table_Name
+FROM PD2023_WK04_NOVEMBER
+UNION all
+SELECT*
+,'October' as Table_Name
+FROM PD2023_WK04_OCTOBER
+UNION all
+SELECT*
+,'September' as Table_Name
+FROM PD2023_WK04_SEPTEMBER
+)
+-- Now all Tables are unioned, pivot the Demographic Data
+
+, PIV AS (
+SELECT*
+FROM NUM1
+PIVOT(min(value) FOR Demographic IN ('Account Type', 'Ethnicity', 'Date of Birth'))
+)
+--Create joining date, use window function to elimiate duplicates of customers/id
+SELECT
+ID
+,DATE_FROM_PARTS(2023, MONTH(TO_DATE(Table_Name, 'MMMM')), JOINING_DAY) AS join_date
+,"'Account Type'"
+ ,"'Date of Birth'"
+,"'Ethnicity'"
+,ROW_NUMBER() OVER(PARTITION BY ID ORDER BY join_date ASC) as rn
+FROM PIV
+Qualify rn=1;
