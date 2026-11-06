@@ -1,0 +1,258 @@
+--Try to keep it as short as possible - you may also want to run some sort of join to make your explanations a bit easier!
+
+SELECT *
+FROM SUBSCRIPTIONS;
+
+SELECT *
+FROM PLANS;
+
+SELECT *
+FROM SUBSCRIPTIONS S
+JOIN PLANS P
+ON S.plan_id=P.Plan_id;
+
+
+---------------------------------------------------------------------------------------------------------
+--PART B
+
+--Q1) How many customers has Foodie-Fi ever had?
+SELECT
+COUNT(distinct customer_id)
+FROM SUBSCRIPTIONS S
+JOIN PLANS P
+ON S.plan_id=P.Plan_id;
+
+--Q2) What is the monthly distribution of trial plan start_date values for our dataset - use the start of the month as the group by value
+SELECT
+COUNT(distinct customer_id)
+, DATE_TRUNC('month',START_DATE) as MONTH
+FROM SUBSCRIPTIONS S
+JOIN PLANS P
+ON S.plan_id=P.Plan_id
+WHERE P.PLAN_NAME='trial'
+GROUP BY 2;
+
+-- Q3) What plan start_date values occur after the year 2020 for our dataset? Show the breakdown by count of events for each plan_name
+SELECT
+COUNT(distinct customer_id)
+, plan_name
+FROM SUBSCRIPTIONS S
+JOIN PLANS P
+ON S.plan_id=P.Plan_id
+WHERE YEAR(START_DATE)>2020
+GROUP BY 2;
+
+-- Q4) What is the customer count and percentage of customers who have churned rounded to 1 decimal place?
+WITH C_COUNT AS(
+SELECT
+COUNT(distinct customer_id) as TOTAL_CUSTOMERS
+FROM SUBSCRIPTIONS
+)
+SELECT
+COUNT(distinct customer_id) as Churned_CUSTOMERS
+,C.TOTAL_CUSTOMERS
+, ROUND((Churned_CUSTOMERS/C.TOTAL_CUSTOMERS)*100,1) as CHURNED_PERCENTAGE
+FROM SUBSCRIPTIONS, C_COUNT C
+WHERE PLAN_ID=4
+group by all;
+
+--Q5) How many customers have churned straight after their initial free trial - what percentage is this rounded to the nearest whole number?
+--Total Customers
+WITH TC AS (
+SELECT
+COUNT(distinct CUSTOMER_ID) as TOTAL_CUSTOMERS
+FROM SUBSCRIPTIONS 
+)
+--List of Trial Dates
+,TRIAL_ as (
+SELECT
+CUSTOMER_ID
+,START_DATE as TRIAL_DATE
+FROM SUBSCRIPTIONS S
+JOIN PLANS P
+ON S.plan_id=P.Plan_id
+WHERE plan_name='trial'
+)
+--list of churned dates
+, CTE AS(SELECT
+S.CUSTOMER_ID
+,T.TRIAL_DATE
+,S.START_DATE as CHURN_DATE
+,DATEDIFF('days',T.TRIAL_DATE, S.START_DATE) as DAY_DIFF
+FROM SUBSCRIPTIONS S
+JOIN TRIAL_ T
+ON S.CUSTOMER_ID=T.CUSTOMER_ID
+WHERE plan_id=4
+ORDER BY DAY_DIFF asc
+)
+SELECT
+COUNT(CUSTOMER_ID) as Customers_Churned_After_Trial
+,ROUND((COUNT(CUSTOMER_ID) * 100.0 / MIN(TC.TOTAL_CUSTOMERS)), 1) AS PERCENTAGE_CHURNED_AFTER_TRIAL
+FROM CTE, TC 
+WHERE DAY_DIFF=7;
+
+--Q6)What is the number and percentage of customer plans after their initial free trial?
+--Assign Numbers, for each customers plan journey. eg 1 =trial always
+WITH NUM1 AS (
+SELECT
+*,
+ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY start_date ASC) as Plan_Journey
+FROM SUBSCRIPTIONS S
+JOIN PLANS P 
+ON P.plan_id = S.plan_id
+)
+--Total Customers
+, TC AS (
+SELECT
+COUNT(distinct CUSTOMER_ID) as TOTAL_CUSTOMERS
+FROM SUBSCRIPTIONS 
+)
+SELECT 
+plan_name
+,COUNT(customer_id) as NUMBER_OF_CUSTOMERS
+,ROUND((COUNT(CUSTOMER_ID) * 100.0 / MIN(TC.TOTAL_CUSTOMERS)), 1) AS PERCENTAGE
+FROM NUM1, TC
+WHERE Plan_Journey = 2
+GROUP BY all;
+
+--Q7)What is the customer count and percentage breakdown of all 5 plan_name values at 2020-12-31?
+--Total Customers on specific date
+WITH NUM1 AS (
+SELECT*
+,ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY start_date DESC) as Plan_Journey
+FROM SUBSCRIPTIONS S
+JOIN PLANS P 
+ON P.plan_id = S.plan_id
+WHERE START_DATE<='2020-12-31'
+)
+, TC AS (
+SELECT
+COUNT(distinct CUSTOMER_ID) as TOTAL_CUSTOMERS
+FROM NUM1
+WHERE START_DATE<='2020-12-31'
+AND Plan_Journey=1
+)
+SELECT
+N.Plan_Name
+,COUNT(distinct CUSTOMER_ID) as CUSTOMERS
+,ROUND (COUNT(distinct CUSTOMER_ID)*100/ MIN(TC.TOTAL_CUSTOMERS),1) as PERCENTAGE
+FROM NUM1 N, TC
+WHERE Plan_Journey=1
+GROUP BY all;
+
+--Q8) How many customers have upgraded to an annual plan in 2020?
+
+SELECT
+COUNT(distinct CUSTOMER_ID) as CUSTOMERS_UPGRADED_TO_ANNUAL
+FROM SUBSCRIPTIONS S
+JOIN PLANS P 
+ON P.plan_id = S.plan_id
+WHERE YEAR(START_DATE)=2020
+and PLAN_NAME='pro annual';
+
+--Q9) How many days on average does it take for a customer to an annual plan from the day they join Foodie-Fi?
+--List of Trial Dates
+WITH TRIAL_ as (
+SELECT
+CUSTOMER_ID
+,PLAN_NAME
+,START_DATE as TRIAL_DATE
+FROM SUBSCRIPTIONS S
+JOIN PLANS P
+ON S.plan_id=P.Plan_id
+WHERE plan_name='trial'
+)
+--list of annual plan dates
+, ANNUAL_ AS(
+SELECT
+CUSTOMER_ID
+,PLAN_NAME
+,START_DATE as ANNUAL_DATE
+FROM SUBSCRIPTIONS S
+JOIN PLANS P
+ON S.plan_id=P.Plan_id
+WHERE plan_name='pro annual'
+)
+SELECT
+A.CUSTOMER_ID
+,TRIAL_DATE
+,ANNUAL_DATE
+,DATEDIFF('days',TRIAL_DATE,ANNUAL_DATE) as Days_between_conversion
+,ROUND(AVG(DATEDIFF('days', TRIAL_DATE, ANNUAL_DATE)) OVER(),0) AS Overall_Avg_Days
+FROM TRIAL_ T
+JOIN ANNUAL_ A
+ON T.CUSTOMER_ID=A.CUSTOMER_ID
+group by 1,2,3;
+
+-- Q10) Can you further breakdown this average value into 30 day periods (i.e. 0-30 days, 31-60 days etc)
+WITH TRIAL_ as (
+SELECT
+CUSTOMER_ID
+,PLAN_NAME
+,START_DATE as TRIAL_DATE
+FROM SUBSCRIPTIONS S
+JOIN PLANS P
+ON S.plan_id=P.Plan_id
+WHERE plan_name='trial'
+)
+--list of annual plan dates
+, ANNUAL_ AS(
+SELECT
+CUSTOMER_ID
+,PLAN_NAME
+,START_DATE as ANNUAL_DATE
+FROM SUBSCRIPTIONS S
+JOIN PLANS P
+ON S.plan_id=P.Plan_id
+WHERE plan_name='pro annual'
+)
+SELECT
+A.CUSTOMER_ID
+,TRIAL_DATE
+,ANNUAL_DATE
+,DATEDIFF('days',TRIAL_DATE,ANNUAL_DATE) as Days_between_conversion
+
+,CASE 
+      WHEN DATEDIFF('days',TRIAL_DATE,ANNUAL_DATE) < 30 THEN'0-30 days'
+      WHEN DATEDIFF('days',TRIAL_DATE,ANNUAL_DATE) BETWEEN 30 AND 60 THEN '30-60 days'
+      ELSE '> 60 days'
+    END AS CONVERSION_BAND
+,ROUND(AVG(DATEDIFF('days', TRIAL_DATE, ANNUAL_DATE)) OVER(),0) AS Overall_Avg_Days
+FROM TRIAL_ T
+JOIN ANNUAL_ A
+ON T.CUSTOMER_ID=A.CUSTOMER_ID
+group by 1,2,3;
+
+--Q11)How many customers downgraded from a pro monthly to a basic monthly plan in 2020?
+--List of Pro monthly Dates
+WITH PRO_MONTH as (
+SELECT
+CUSTOMER_ID
+,PLAN_NAME
+,START_DATE as PRO_MONTH_DATE
+FROM SUBSCRIPTIONS S
+JOIN PLANS P
+ON S.plan_id=P.Plan_id
+WHERE plan_name='pro monthly'
+)
+--list of basic plan dates
+, BASIC_MONTH_ AS(
+SELECT
+CUSTOMER_ID
+,PLAN_NAME
+,START_DATE as BASIC_MONTH_DATE
+FROM SUBSCRIPTIONS S
+JOIN PLANS P
+ON S.plan_id=P.Plan_id
+WHERE plan_name='basic monthly'
+)
+SELECT
+PM.CUSTOMER_ID
+,PRO_MONTH_DATE
+,BASIC_MONTH_DATE
+FROM PRO_MONTH PM
+JOIN BASIC_MONTH_ BM
+ON PM.CUSTOMER_ID=BM.CUSTOMER_ID
+WHERE YEAR(BASIC_MONTH_DATE)=2020;
+--AND  PRO_MONTH_DATE<BASIC_MONTH_DATE;
+-- THIS QUERY PRODUCED NO RESULTS WITH THE SECOND DATE FILTER
