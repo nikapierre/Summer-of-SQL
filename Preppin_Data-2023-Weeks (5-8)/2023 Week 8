@@ -1,0 +1,98 @@
+-- UNION ALL TABLES and insert date column
+WITH UNION_DATA AS (
+SELECT *
+,DATE_FROM_PARTS(2023,01,01) as File_date
+FROM PD2023_WK08_01
+UNION ALL
+SELECT *
+,DATE_FROM_PARTS(2023,02,01) as File_date
+FROM PD2023_WK08_02
+UNION ALL
+SELECT *
+,DATE_FROM_PARTS(2023,03,01) as File_date
+FROM PD2023_WK08_03
+UNION ALL
+SELECT *
+,DATE_FROM_PARTS(2023,04,01) as File_date
+FROM PD2023_WK08_04
+UNION ALL
+SELECT *
+,DATE_FROM_PARTS(2023,05,01) as File_date
+FROM PD2023_WK08_05
+UNION ALL
+SELECT *
+,DATE_FROM_PARTS(2023,06,01) as File_date
+FROM PD2023_WK08_06
+UNION ALL
+SELECT *
+,DATE_FROM_PARTS(2023,07,01) as File_date
+FROM PD2023_WK08_07
+UNION ALL
+SELECT *
+,DATE_FROM_PARTS(2023,08,01) as File_date
+FROM PD2023_WK08_08
+UNION ALL
+SELECT *
+,DATE_FROM_PARTS(2023,09,01) as File_date
+FROM PD2023_WK08_09
+UNION ALL
+SELECT *
+,DATE_FROM_PARTS(2023,10,01) as File_date
+FROM PD2023_WK08_10
+UNION ALL
+SELECT *
+,DATE_FROM_PARTS(2023,11,01) as File_date
+FROM PD2023_WK08_11
+UNION ALL
+SELECT *
+,DATE_FROM_PARTS(2023,12,01) as File_date
+FROM PD2023_WK08_12
+)
+-- Convert Cap Value to int, Catergorise purchase price 
+,CASES_12 AS (
+SELECT *
+,TRY_TO_NUMBER(REGEXP_REPLACE(MARKET_CAP, '[^0-9.]', ''), 38, 4)
+    * CASE UPPER(RIGHT(TRIM(MARKET_CAP), 1))
+        WHEN 'K' THEN 1000
+        WHEN 'M' THEN 1000000
+        WHEN 'B' THEN 1000000000
+        WHEN 'T' THEN 1000000000000
+        ELSE 1
+        END as Market_Capitalisation
+
+,CASE 
+    WHEN TRY_TO_DECIMAL(REPLACE(PURCHASE_PRICE,'$','')) BETWEEN 0 AND 24999.99 THEN 'Low'
+    WHEN TRY_TO_DECIMAL(REPLACE(PURCHASE_PRICE,'$','')) BETWEEN 25000 AND 49999.99 THEN 'Medium'
+    WHEN TRY_TO_DECIMAL(REPLACE(PURCHASE_PRICE,'$','')) BETWEEN 50000 AND 74999.99 THEN 'High'
+    WHEN TRY_TO_DECIMAL(REPLACE(PURCHASE_PRICE,'$','')) BETWEEN 75000 AND 100000 THEN 'Very High'
+    ELSE '' 
+    END as PURCHASE_PRICE_CATEGORISATION
+FROM UNION_DATA
+)
+--Categorise Market Capitalisation, and filter where Market Capitalisation is null
+,CASE_3 AS(
+SELECT*
+,CASE
+    WHEN Market_Capitalisation < 100000000 THEN 'Small'
+    WHEN Market_Capitalisation BETWEEN 100000000 AND 1000000000 THEN 'Medium'
+    WHEN Market_Capitalisation BETWEEN 1000000000 AND 100000000000 THEN 'Large'
+    WHEN Market_Capitalisation >= 100000000000 THEN 'Huge'
+    ELSE ''
+    END as Market_Capitalisation_Categorisation
+FROM CASES_12
+WHERE Market_Capitalisation is not null
+)
+--Create Rank over file_date, PURCHASE_PRICE_CATEGORISATION, Market_Capitalisation_Categorisation by purchase price desc. Keep ransk 1-5 only
+SELECT
+Market_Capitalisation_Categorisation
+,PURCHASE_PRICE_CATEGORISATION
+,file_date
+,ticker
+,sector
+,Market
+,Stock_name
+,Market_Capitalisation
+,TRY_TO_DECIMAL(REPLACE(PURCHASE_PRICE,'$','')) as purchase_price
+,RANK() OVER (partition by file_date, PURCHASE_PRICE_CATEGORISATION, Market_Capitalisation_Categorisation ORDER BY purchase_price desc) as Rank
+FROM CASE_3
+QUALIFY Rank <= 5;
