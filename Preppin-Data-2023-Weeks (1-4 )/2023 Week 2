@@ -1,0 +1,7 @@
+--Output
+SELECT
+TRANSACTION_ID  as "Transaction ID"
+,'GB' || SC.check_digits|| SC.SWIFT_CODE || REPLACE(T.sort_code,'-','')|| T.account_number as IBAN
+FROM PD2023_WK02_TRANSACTIONS as T
+JOIN PD2023_WK02_SWIFT_CODES as SC
+ON T.bank=SC.bank ;

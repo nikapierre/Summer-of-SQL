@@ -1,0 +1,21 @@
+--Create Trasnaction Date and Bank Code
+WITH NUM1 AS(
+SELECT 
+MONTHNAME(TO_TIMESTAMP(TRANSACTION_DATE, 'DD/MM/YYYY HH:MI:SS')) as Transaction_Date
+,SPLIT_PART(transaction_code,'-',1) as BANK
+,SUM(VALUE)  as VALUE
+FROM PD2023_WK01
+GROUP BY 1,2
+)
+-- Rank over transaction month
+, NUM2 AS (
+SELECT *
+, RANK() OVER (Partition by Transaction_Date ORDER BY VALUE DESC  ) as BANK_RANK_PER_MONTH
+FROM NUM1
+)
+--Calculate Averages
+SELECT*
+,ROUND(AVG(VALUE) OVER (Partition BY BANK_RANK_PER_MONTH ),2) as  AVG_TRANSACTION_VALUE_PER_RANK
+,ROUND(AVG(BANK_RANK_PER_MONTH) OVER (Partition By BANK),2) as AVG_RANK_PER_BANK
+FROM NUM2
+GROUP BY Transaction_Date, BANK, VALUE, BANK_RANK_PER_MONTH ;

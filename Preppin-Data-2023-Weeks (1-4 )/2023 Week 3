@@ -1,0 +1,46 @@
+--Transaction data to go into CTE
+SELECT
+IFF(online_or_in_person=1, 'Online', 'In-person') as "Online or In-person"
+,QUARTER(TO_TIMESTAMP(TRANSACTION_DATE, 'DD/MM/YYYY HH:MI:SS')) AS "Quarter"
+,SUM(value) as "Value"
+FROM PD2023_WK01
+WHERE LEFT(transaction_code,3)='DSB'
+GROUP BY all;
+
+--Quarterly Targets to go into CTE (Unpivot Table)
+SELECT
+ONLINE_OR_IN_PERSON
+,TO_NUMBER(RIGHT(QUARTER,1)) as Quarter
+,Quarterly_Target
+FROM PD2023_WK03_TARGETS
+UNPIVOT (Quarterly_Target FOR Quarter IN (Q1,Q2,Q3,Q4));
+
+--FINAL OUTPUT
+WITH Targets AS (
+SELECT
+ONLINE_OR_IN_PERSON
+,TO_NUMBER(RIGHT(QUARTER,1)) as Quarter
+,Quarterly_Target
+FROM PD2023_WK03_TARGETS
+UNPIVOT (Quarterly_Target FOR Quarter IN (Q1,Q2,Q3,Q4))
+)
+, TRANSAC AS(
+SELECT
+IFF(online_or_in_person=1, 'Online', 'In-Person') as Online_or_In_person
+,QUARTER(TO_TIMESTAMP(TRANSACTION_DATE, 'DD/MM/YYYY HH:MI:SS')) AS Quarter
+,SUM(value) as Value
+FROM PD2023_WK01
+WHERE LEFT(transaction_code,3)='DSB'
+GROUP BY all
+)
+SELECT
+Tr.ONLINE_OR_IN_PERSON as "Online or In-Person"
+,T.Quarter as "Quarter"
+,Tr.Value as "Value"
+,Quarterly_Target as "Quarterly Target"
+,Tr.Value-Quarterly_Target as "Variance to Target"
+FROM TRANSAC as Tr
+JOIN TARGETS as T
+ON Tr.Quarter=T.Quarter
+AND Tr.Online_or_In_person=T.ONLINE_OR_IN_PERSON
+GROUP BY all;
