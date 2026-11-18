@@ -1,0 +1,73 @@
+-- Q1)How many unique nodes are there on the Data Bank system?
+
+-- From the customer_nodes table, count distinct the number of node id
+
+SELECT
+COUNT(distinct node_id) as unique_nodes
+FROM customer_nodes;
+
+-- Q2) What is the number of nodes per region?
+--See where the node and region information lay, Join customer_nodes to regions table on region_id, select region, count distinct node id, group by the region.
+
+SELECT
+r.region_name
+,count(distinct cn.region_id) as nodes_per_region
+FROM customer_nodes cn
+JOIN regions r
+ON r.region_id=cn.region_id
+group by 1;
+
+-- Q3)How many customers are allocated to each region?
+-- Join customer_nodes to regions on region id. Alias both table names. select the r.region name and count distinct the customer id. Group by the region
+
+SELECT
+r.region_name
+,count(distinct cn.customer_id) as customers_per_region
+FROM customer_nodes cn
+JOIN regions r
+ON r.region_id=cn.region_id
+group by 1;
+
+-- Q4) How many days on average are customers reallocated to a different node?
+--USE CTE, aliased as date diff:
+--From the customer_nodes table, select customer id, region id, node id, date differnce ('days',start_date, end_date), group by all
+--Then From the CTE, select AVG date diff, as average days 
+
+With DATE_DIFF_DAY as (
+SELECT
+customer_id
+,region_id
+,node_id
+,SUM(DATEDIFF('days',start_date, end_date)) as NODE_DURATION
+FROM customer_nodes
+WHERE END_DATE<CURRENT_DATE()
+GROUP BY all
+)
+SELECT
+AVG(NODE_DURATION) as AVG_NODE_DURATION
+FROM DATE_DIFF_DAY;
+
+-- Q5) What is the median, 80th and 95th percentile for this same reallocation days metric for each region?
+-- Create CTE
+--FROM customer nodes, select customer id, region_id, node_id and DATE_DIFF, group by, where date is less than today.
+-- From the CTE table, join on region_id. Select region_name, median, percentile, group by region
+
+With CTE as (
+SELECT
+customer_id
+,region_id
+,node_id
+,SUM(DATEDIFF('days',start_date, end_date)) as NODE_DURATION
+FROM customer_nodes
+WHERE END_DATE<CURRENT_DATE()
+GROUP BY all
+)
+SELECT
+r.region_name
+,round(median(NODE_DURATION),0) as median_NODE_duraction
+,ROUND(PERCENTILE_CONT(0.8) WITHIN GROUP (ORDER BY NODE_DURATION),0) as "80th percentile"
+,ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP(ORDER BY NODE_DURATION),0) as "95th percentile"
+FROM CTE C
+JOIN regions r
+ON r.region_id=c.region_id
+group by all;
